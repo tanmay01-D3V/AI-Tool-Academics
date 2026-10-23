@@ -1,7 +1,6 @@
 # ⚡ Neon Particle Sandbox ⚡
 
-**Student:** [YOUR FULL NAME]  |  **Roll No:** #35
-**Live App:** https://[your-username].github.io/crazy-app-student-35/
+**Student:** TANMAY VIJAY SHERKAR  |  **Roll No:** #35
 
 > Your mouse is a lightning rod. The canvas is a storm. 🌩️
 
