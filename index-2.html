@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Particle Sandbox - Student #35</title>
+<style>
+  :root {
+    --cyan: #00f0ff;
+    --pink: #ff2bd6;
+    --lime: #b6ff00;
+    --bg: #05010d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: #fff;
+  }
+  canvas {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    cursor: crosshair;
+    display: block;
+  }
+  canvas.shake { animation: shake 0.35s ease-out; }
+  canvas.glitch { filter: hue-rotate(40deg) saturate(1.6) contrast(1.2); }
+  @keyframes shake {
+    0%   { transform: translate(0, 0); }
+    15%  { transform: translate(-8px, 5px); }
+    30%  { transform: translate(7px, -6px); }
+    45%  { transform: translate(-5px, -4px); }
+    60%  { transform: translate(4px, 6px); }
+    80%  { transform: translate(-2px, 2px); }
+    100% { transform: translate(0, 0); }
+  }
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 14px 20px;
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(5,1,13,0.85), rgba(5,1,13,0));
+  }
+  header h1 {
+    font-size: clamp(1.1rem, 3vw, 1.8rem);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    text-shadow: 0 0 8px var(--cyan), 0 0 22px var(--cyan), 0 0 44px var(--pink);
+    animation: flicker 4s infinite;
+  }
+  header p {
+    margin-top: 4px;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    color: var(--pink);
+    text-shadow: 0 0 10px var(--pink);
+  }
+  @keyframes flicker {
+    0%, 18%, 22%, 62%, 64%, 100% { opacity: 1; }
+    20%, 63% { opacity: 0.55; }
+  }
+  .controls {
+    position: fixed; bottom: 18px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+    z-index: 10;
+    padding: 0 12px;
+  }
+  button {
+    background: rgba(10, 4, 30, 0.7);
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-size: 0.85rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0,240,255,0.5), inset 0 0 10px rgba(0,240,255,0.15);
+    transition: transform 0.12s ease, box-shadow 0.2s ease, color 0.2s, border-color 0.2s;
+  }
+  button:hover {
+    box-shadow: 0 0 22px var(--cyan), inset 0 0 14px rgba(0,240,255,0.3);
+  }
+  button:active { transform: scale(0.88); }
+  button.on {
+    color: var(--lime); border-color: var(--lime);
+    box-shadow: 0 0 14px var(--lime), inset 0 0 12px rgba(182,255,0,0.25);
+  }
+  .hint {
+    position: fixed; bottom: 70px; left: 0; right: 0;
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.45);
+    z-index: 9;
+    pointer-events: none;
+  }
+  #metrics {
+    position: fixed; top: 76px; right: 18px;
+    min-width: 190px;
+    padding: 12px 14px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: #39ff14;
+    background: rgba(0, 20, 5, 0.65);
+    border: 1px solid #39ff14;
+    border-radius: 8px;
+    box-shadow: 0 0 14px rgba(57,255,20,0.45), inset 0 0 12px rgba(57,255,20,0.12);
+    text-shadow: 0 0 6px #39ff14;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #metrics .title {
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed rgba(57,255,20,0.5);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    opacity: 0.8;
+  }
+  #metrics .row { display: flex; justify-content: space-between; gap: 14px; padding: 1px 0; }
+  #metrics .val { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Neon Particle Sandbox</h1>
+  <p>Created by Student #35</p>
+</header>
+
+<div id="metrics">
+  <div class="title">&gt; SYSTEM METRICS</div>
+  <div class="row"><span>FPS</span><span class="val" id="mFps">0</span></div>
+  <div class="row"><span>PARTICLES</span><span class="val" id="mParticles">0</span></div>
+  <div class="row"><span>PEAK</span><span class="val" id="mPeak">0</span></div>
+  <div class="row"><span>SHOCKWAVES</span><span class="val" id="mWaves">0</span></div>
+  <div class="row"><span>MOUSE SPEED</span><span class="val" id="mSpeed">0 px/f</span></div>
+  <div class="row"><span>CLICKS</span><span class="val" id="mClicks">0</span></div>
+</div>
+<canvas id="stage"></canvas>
+
+<div class="hint">MOVE = SPARKS &nbsp;|&nbsp; CLICK = SHOCKWAVE &nbsp;|&nbsp; HOLD = BLACK HOLE &nbsp;|&nbsp; TRY KEYS: G, B</div>
+
+<div class="controls">
+  <button id="btnSound">Sound: Off</button>
+  <button id="btnGlitch">Glitch: Off</button>
+  <button id="btnClear">Clear</button>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   SETUP
+   ============================================================ */
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+const mFps = document.getElementById("mFps");
+const mParticles = document.getElementById("mParticles");
+const mPeak = document.getElementById("mPeak");
+const mWaves = document.getElementById("mWaves");
+const mSpeed = document.getElementById("mSpeed");
+const mClicks = document.getElementById("mClicks");
+
+// Live metric values
+let clickCount = 0;
+let peakParticles = 0;
+let currentSpeed = 0;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+const btnSound = document.getElementById("btnSound");
+const btnGlitch = document.getElementById("btnGlitch");
+const btnClear = document.getElementById("btnClear");
+
+let width = 0, height = 0;
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener("resize", resize);
+resize();
+
+const MAX_PARTICLES = 2500;
+const particles = [];
+const shockwaves = [];
+
+const mouse = { x: width / 2, y: height / 2, lastX: width / 2, lastY: height / 2, down: false };
+let hue = 180;
+let soundOn = false;
+let glitchOn = false;
+
+/* ============================================================
+   PURE HELPER FUNCTIONS (these are unit-tested at the bottom)
+   ============================================================ */
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+// How many particles to spawn for a given mouse speed (pixels per frame).
+// Bad input (0, negative, NaN, Infinity) safely returns 0.
+function particleCountForSpeed(speed) {
+  if (!Number.isFinite(speed) || speed <= 0) return 0;
+  return clamp(Math.round(speed / 4), 1, 12);
+}
+
+// Maps mouse speed to a synth pitch in Hz, always kept in a safe audible range.
+function speedToFrequency(speed) {
+  const safe = Number.isFinite(speed) ? Math.max(0, speed) : 0;
+  return clamp(180 + safe * 6, 100, 1400);
+}
+
+/* ============================================================
+   AUDIO (Web Audio API - needs a click first, browsers require it)
+   ============================================================ */
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    audioCtx = new AC();
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return true;
+}
+
+function playSynth(freq, duration = 0.15, type = "sawtooth", volume = 0.06) {
+  if (!soundOn || !ensureAudio()) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, now);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq / 2), now + duration);
+  gain.gain.setValueAtTime(volume, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + duration);
+}
+
+function playGlitch() {
+  if (!soundOn || !ensureAudio()) return;
+  const now = audioCtx.currentTime;
+  const length = Math.floor(audioCtx.sampleRate * 0.18);
+  const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) {
+    // choppy, bit-crushed noise
+    data[i] = (Math.random() * 2 - 1) * (Math.floor(i / 120) % 2 ? 1 : 0.2);
+  }
+  const src = audioCtx.createBufferSource();
+  const filter = audioCtx.createBiquadFilter();
+  const gain = audioCtx.createGain();
+  src.buffer = buffer;
+  filter.type = "bandpass";
+  filter.frequency.value = 600 + Math.random() * 3000;
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start(now);
+}
+
+function playBoom() {
+  playSynth(90, 0.5, "square", 0.12);
+  playSynth(55, 0.6, "sine", 0.18);
+  playGlitch();
+}
+
+/* ============================================================
+   PARTICLES & SHOCKWAVES
+   ============================================================ */
+function spawnParticle(x, y, burstSpeed) {
+  if (particles.length >= MAX_PARTICLES) particles.shift();
+  const angle = Math.random() * Math.PI * 2;
+  const speed = (Math.random() * 0.6 + 0.4) * burstSpeed;
+  particles.push({
+    x, y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    life: 1,
+    decay: Math.random() * 0.012 + 0.008,
+    size: Math.random() * 3 + 1.2,
+    hue: hue + Math.random() * 60 - 30
+  });
+}
+
+function explode(x, y, amount, power) {
+  for (let i = 0; i < amount; i++) spawnParticle(x, y, power);
+}
+
+function addShockwave(x, y) {
+  shockwaves.push({ x, y, radius: 4, alpha: 1, hue });
+}
+
+function shakeScreen() {
+  canvas.classList.remove("shake");
+  void canvas.offsetWidth; // restart the CSS animation
+  canvas.classList.add("shake");
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+
+    // Hold the mouse down = black hole that pulls particles in
+    if (mouse.down) {
+      const dx = mouse.x - p.x;
+      const dy = mouse.y - p.y;
+      const dist = Math.max(30, Math.hypot(dx, dy));
+      const pull = 900 / (dist * dist);
+      p.vx += (dx / dist) * pull * 6;
+      p.vy += (dy / dist) * pull * 6;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.985;
+    p.vy *= 0.985;
+    p.vy += 0.015; // tiny gravity
+    p.life -= p.decay;
+
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function updateShockwaves() {
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const s = shockwaves[i];
+    s.radius += 9;
+    s.alpha -= 0.018;
+    if (s.alpha <= 0) shockwaves.splice(i, 1);
+  }
+}
+
+function draw() {
+  // Semi-transparent black rectangle = glowing motion trails
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = glitchOn ? "rgba(5,1,13,0.12)" : "rgba(5,1,13,0.22)";
+  ctx.fillRect(0, 0, width, height);
+
+  // Additive blending makes overlapping particles glow
+  ctx.globalCompositeOperation = "lighter";
+
+  for (const p of particles) {
+    ctx.beginPath();
+    ctx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${p.life})`;
+    ctx.shadowColor = `hsl(${p.hue}, 100%, 60%)`;
+    ctx.shadowBlur = 14;
+    ctx.arc(p.x, p.y, p.size * p.life + 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.shadowBlur = 0;
+  for (const s of shockwaves) {
+    ctx.beginPath();
+    ctx.strokeStyle = `hsla(${s.hue}, 100%, 65%, ${s.alpha})`;
+    ctx.lineWidth = 3 + s.alpha * 5;
+    ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Glitch mode: random RGB-style slices of the screen shifted sideways
+  if (glitchOn && Math.random() < 0.35) {
+    const sliceY = Math.random() * height;
+    const sliceH = Math.random() * 40 + 6;
+    const shift = (Math.random() - 0.5) * 60;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(canvas, 0, sliceY * (canvas.height / height), canvas.width, sliceH * (canvas.height / height),
+                  shift, sliceY, width, sliceH);
+  }
+}
+
+/* ============================================================
+   GREEN METRICS PANEL
+   ============================================================ */
+function updateMetrics() {
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 500) {
+    mFps.textContent = Math.round((frameCount * 1000) / (now - lastFpsTime));
+    frameCount = 0;
+    lastFpsTime = now;
+  }
+  peakParticles = Math.max(peakParticles, particles.length);
+  currentSpeed *= 0.9; // fades to 0 when the mouse stops
+  mParticles.textContent = particles.length;
+  mPeak.textContent = peakParticles;
+  mWaves.textContent = shockwaves.length;
+  mSpeed.textContent = currentSpeed.toFixed(1) + " px/f";
+  mClicks.textContent = clickCount;
+}
+
+/* ============================================================
+   MAIN LOOP
+   ============================================================ */
+// ANALOGY (swap this for the one your AI gives you in Task 3 if you like):
+// Think of animate() as a traffic police officer at a busy junction who blows
+// the whistle 60 times every second: each whistle, every car (particle) moves
+// one step, the tired ones (faded particles) leave the road, and then he
+// repaints the whole junction so everyone can see the new positions.
+function animate() {
+  hue = (hue + 0.6) % 360;
+  updateParticles();
+  updateShockwaves();
+  draw();
+  updateMetrics();
+  requestAnimationFrame(animate);
+}
+
+/* ============================================================
+   INPUT EVENTS
+   ============================================================ */
+function handleMove(x, y) {
+  mouse.lastX = mouse.x;
+  mouse.lastY = mouse.y;
+  mouse.x = x;
+  mouse.y = y;
+
+  const speed = Math.hypot(mouse.x - mouse.lastX, mouse.y - mouse.lastY);
+  currentSpeed = Math.max(currentSpeed, speed);
+  const count = particleCountForSpeed(speed);
+  for (let i = 0; i < count; i++) spawnParticle(x, y, 2 + speed * 0.08);
+
+  // Fast swipes make little synth blips (throttled so it isn't deafening)
+  if (speed > 25 && Math.random() < 0.12) {
+    playSynth(speedToFrequency(speed), 0.12, "sawtooth", 0.035);
+  }
+}
+
+canvas.addEventListener("mousemove", (e) => handleMove(e.clientX, e.clientY));
+canvas.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  handleMove(t.clientX, t.clientY);
+}, { passive: false });
+
+canvas.addEventListener("mousedown", (e) => {
+  clickCount++;
+  mouse.down = true;
+  mouse.x = e.clientX; mouse.y = e.clientY;
+  explode(e.clientX, e.clientY, 90, 7);
+  addShockwave(e.clientX, e.clientY);
+  shakeScreen();
+  playBoom();
+});
+window.addEventListener("mouseup", () => { mouse.down = false; });
+
+canvas.addEventListener("touchstart", (e) => {
+  clickCount++;
+  const t = e.touches[0];
+  mouse.down = true;
+  mouse.x = t.clientX; mouse.y = t.clientY;
+  explode(t.clientX, t.clientY, 90, 7);
+  addShockwave(t.clientX, t.clientY);
+  shakeScreen();
+  playBoom();
+}, { passive: true });
+window.addEventListener("touchend", () => { mouse.down = false; });
+
+/* ---------- Buttons ---------- */
+btnSound.addEventListener("click", () => {
+  soundOn = !soundOn;
+  if (soundOn) ensureAudio();
+  btnSound.textContent = "Sound: " + (soundOn ? "On" : "Off");
+  btnSound.classList.toggle("on", soundOn);
+  if (soundOn) playSynth(660, 0.2, "triangle", 0.08);
+});
+
+function toggleGlitch() {
+  glitchOn = !glitchOn;
+  btnGlitch.textContent = "Glitch: " + (glitchOn ? "On" : "Off");
+  btnGlitch.classList.toggle("on", glitchOn);
+  canvas.classList.toggle("glitch", glitchOn);
+  if (glitchOn) playGlitch();
+}
+btnGlitch.addEventListener("click", toggleGlitch);
+
+btnClear.addEventListener("click", () => {
+  particles.length = 0;
+  shockwaves.length = 0;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#05010d";
+  ctx.fillRect(0, 0, width, height);
+});
+
+/* ---------- Secret keys ---------- */
+window.addEventListener("keydown", (e) => {
+  const key = e.key.toLowerCase();
+  if (key === "g") toggleGlitch();
+  if (key === "b") {
+    // SECRET: BIG BANG - five chained explosions across the screen
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        explode(x, y, 120, 9);
+        addShockwave(x, y);
+        shakeScreen();
+        playBoom();
+      }, i * 160);
+    }
+  }
+});
+
+/* ============================================================
+   START
+   ============================================================ */
+ctx.fillStyle = "#05010d";
+ctx.fillRect(0, 0, width, height);
+animate();
+
+/* ============================================================
+   UNIT TESTS (console.assert prints an error only if a test FAILS)
+   Open DevTools > Console. If you see no "Assertion failed", all pass.
+   ============================================================ */
+console.assert(particleCountForSpeed(40) === 10, "Test 1 failed: normal speed (40) should give 10 particles");
+console.assert(particleCountForSpeed(0) === 0, "Test 2 failed: zero speed should give 0 particles");
+console.assert(particleCountForSpeed(-25) === 0, "Test 3 failed: negative speed should give 0 particles, not crash");
+console.log("Tests finished: no 'Assertion failed' message above means all 3 passed.");
+</script>
+</body>
+</html>
